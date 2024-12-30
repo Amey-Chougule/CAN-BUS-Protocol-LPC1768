@@ -1,0 +1,53 @@
+#include "mbed.h"
+
+// Define ticker and LEDs
+Ticker ticker;
+DigitalOut led1(LED1);
+DigitalOut led2(LED2);
+DigitalOut led3(LED3);
+DigitalOut led4(LED4);
+
+// Define CAN interface
+CAN can1(p30, p29);
+
+// Define counter and flag for CAN message sending
+char counter = 0;
+volatile bool send_flag = false;
+
+// Function to set the flag from the ISR
+void set_send_flag() {
+    send_flag = true;
+    led1 = !led1;
+    led2 = !led2;
+    led3 = !led3;
+    led4 = !led4;
+
+}
+
+// Function to send CAN message
+void send() {
+    printf("send()\n");
+    if (can1.write(CANMessage(1337, &counter, 1))) {
+        printf("wloop()\n");
+        counter++;
+        printf("Message sent: %d\n", counter);
+    }
+}
+
+// Main function
+int main() {
+    printf("main()\n");
+
+    // Attach the ticker interrupt to set the send flag
+    ticker.attach(&set_send_flag, 1s);
+
+    // Main loop
+    while(1) {
+        printf("loop()\n");
+        if (send_flag) {
+            send_flag = false;  // Reset the flag
+            send();  // Call the send function
+        }
+        ThisThread::sleep_for(30ms);
+    }
+}
